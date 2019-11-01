@@ -1,0 +1,22 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/co_mint/CLionProjects/DataStructruesP1/main.c
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+dirent.h
+-
+locale.h
+-
+stdbool.h
+-
+

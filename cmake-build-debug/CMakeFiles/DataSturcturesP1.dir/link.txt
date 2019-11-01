@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/DataSturcturesP1.dir/main.c.o  -o DataSturcturesP1 
