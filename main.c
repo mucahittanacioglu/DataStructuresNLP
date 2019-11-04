@@ -53,6 +53,24 @@ bool checkIsTwoHasFirstOrderReleationsEachOther(Term *term1, Term *term2);
 
 void printSecondOrderRl(Term *pTerm);
 
+bool checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(Term *pTerm, Term *pTerm1);
+
+void addToThirdOrderList(Term *pTerm, Term *pTerm1);
+
+void printThirdOrderRl(Term *pTerm);
+
+bool HasTwoTermFirstORderRelations(Term *pTerm, Term *pTerm1);
+
+bool HasTwoTermSecondORderRelations(Term *pTerm, Term *pTerm1);
+
+void printFirstORderOfGivenTerm(Term *pTerm, char* );
+
+void printSecondORderOfGivenTerm(Term *pTerm, char* );
+
+void printThirdORderOfGivenTerm(Term *root, char *term);
+
+void printGivenTermsDetails(Term *root, char *term);
+
 int main() {
     Term *root=NULL;
     setlocale(LC_ALL, "Turkish");
@@ -101,10 +119,105 @@ int main() {
 
     closedir(datasets);
     createRelations(root);
-   // printListWithDeteails(root);
-    printFirstOrderRl(root);
-    printSecondOrderRl(root);
+    printGivenTermsDetails(root,"ve");
+    //printFirstORderOfGivenTerm(root,"5");
+    //printSecondORderOfGivenTerm(root,"1");
+   // printThirdORderOfGivenTerm(root,"1");
+    //printList(root);
+   //printListWithDeteails(root);
+   //printFirstOrderRl(root);
+  //printSecondOrderRl(root);
+  // printThirdOrderRl(root);
     return 0;
+}
+
+void printGivenTermsDetails(Term *root, char *term) {
+    Doc *iter;
+    while(root != NULL){
+
+        if(strcmp(root->word,term)==0){
+            iter=root->documents;
+            printf("WORD: %s\n",root->word);
+            printFirstORderOfGivenTerm(root,term);
+            printSecondORderOfGivenTerm(root,term);
+            printThirdORderOfGivenTerm(root,term);
+            while(iter != NULL){
+                printf("Document Name: %s|\tCount: %d\n", iter->name, iter->count);
+                iter=iter->next;
+
+            }
+            printf("----------------------------------\n");
+        }
+
+        root=root->next;
+    }
+}
+
+void printThirdORderOfGivenTerm(Term *root, char *term) {
+    RL* iter;
+    while(root != NULL){
+        if(strcmp(root->word,term)==0){
+            printf("\nWORD: %s\nThird Order List: ",root->word);
+            iter=root->thirdOrderReleations;
+            while(iter != NULL){
+                printf("%s:",iter->releatedTerm->word);
+                iter = iter->next;
+            }
+        }
+        root = root->next;
+    }
+}
+
+void printSecondORderOfGivenTerm(Term *root, char* term) {
+    RL* iter;
+    while(root != NULL){
+        if(strcmp(root->word,term)==0){
+            printf("\nWORD: %s\nSecond Order List: ",root->word);
+            iter=root->secondOrderReleations;
+            while(iter != NULL){
+                printf("%s:",iter->releatedTerm->word);
+                iter = iter->next;
+            }
+        }
+        root = root->next;
+    }
+}
+
+void printFirstORderOfGivenTerm(Term *root, char *term) {
+   RL* iter;
+    while(root != NULL){
+        if(strcmp(root->word,term)==0){
+         printf("\nWORD: %s\nFirst Order List: ",root->word);
+         iter=root->firstOrderReleations;
+         while(iter != NULL){
+             printf("%s:",iter->releatedTerm->word);
+             iter = iter->next;
+         }
+        }
+        root = root->next;
+    }
+
+
+}
+
+void printThirdOrderRl(Term *root) {
+    RL* iter;
+    while(root != NULL){
+
+        if(root->thirdOrderReleations==NULL){
+            root = root->next;
+            continue;
+        }
+        printf("\nWORD: %s\nThird Order List: ",root->word);
+
+        iter=root->thirdOrderReleations;
+        while(iter != NULL){
+            printf("%s--",iter->releatedTerm->word);
+            iter = iter->next;
+        }
+
+        root = root->next;
+    }
 }
 
 void printSecondOrderRl(Term *root) {
@@ -148,6 +261,36 @@ void printFirstOrderRl(Term *root) {
 
 }
 
+void printList(Term* root){
+    int c = 1;
+    printf("%s\n",root->word);
+    while(root->next!=NULL){
+        root=root->next;
+        printf(":%s\n",root->word);
+    }
+}
+
+void printListWithDeteails(Term* root){
+    Doc *iter;
+    while(root != NULL){
+        iter=root->documents;
+
+        printf("WORD: %s\n",root->word);
+       /* if(iter->next == NULL){
+            root=root->next;
+            continue;
+        }*/
+
+        while(iter != NULL){
+            printf("Document Name: %s|\tCount: %d\n", iter->name, iter->count);
+            iter=iter->next;
+
+        }
+        root=root->next;
+        printf("----------------------------------\n");
+
+    }
+}
 void startReading(Term** root,char *path){
     FILE *fp;
     char buffer[255];
@@ -216,42 +359,13 @@ void increaseDocumentCount(Term *root, char *name, char *docname) {
 int checkIsAlreadyInList(char* name,Term* root){
     if(strcmp(root->word,name)==0)//checking if there is only 1 element in list
         return 1;
-    while(root->next!= NULL) {
+    while(root != NULL) {
         if (strcmp(root->word, name) == 0)
             return 1;
         root = root->next;
     }
     return 0;
 }
-
-void printList(Term* root){
-    int c = 1;
-    printf("%d:%s\n",++c,root->word);
-    while(root->next!=NULL){
-        root=root->next;
-        printf("%d:%s\n",++c,root->word);
-    }
-}
-
-void printListWithDeteails(Term* root){
-    Doc *iter;
-    while(root->next!=NULL){
-        iter=root->documents;
-
-        printf("WORD: %s\n",root->word);
-        if(iter->next==NULL)
-            printf("Document Name: %s|\tCount: %d\n", iter->name, iter->count);
-        while(iter->next != NULL){
-            printf("Document Name: %s|\tCount: %d\n", iter->name, iter->count);
-            iter=iter->next;
-
-        }
-        root=root->next;
-        printf("----------------------------------\n");
-
-    }
-}
-
 void createRelations(Term *root){
    createFirstOrderReleations(root);
    createSecondOrderReleations(root);
@@ -296,16 +410,18 @@ void addToFirstOrderList(Term *term1, Term *term2) {
 
 }
 
-
 void createSecondOrderReleations(Term* root){//While creating second order list the idea is checking they have common term in their first order lists
                                             // but they are not first order with eachother
 
     Term *iter=root;
-    Term * iter2=root->next;
+    Term * iter2=root;
 
 
     while(iter !=NULL){
         while(iter2!=NULL) {
+            if((strcmp(iter->word,"1")== 0))
+                if((strcmp(iter2->word,"5")== 0))
+                    printf("sss");
             if (checkIsTwoHasFirstOrderReleationsEachOther(iter, iter2)){
                 iter2 = iter2->next;
                 continue;
@@ -317,7 +433,7 @@ void createSecondOrderReleations(Term* root){//While creating second order list 
         }
 
         iter=iter->next;
-        iter2=root->next;
+        iter2=root;
     }
 
 }
@@ -343,10 +459,14 @@ bool checkIfHaveCommonTermInFirstOrderList(Term *term1, Term *term2) {
         return 0;
     while(iter1 != NULL) {
         while (iter2 != NULL) {
-            if(strcmp(iter1->releatedTerm->word,iter2->releatedTerm->word) == 0)
+            if(strcmp(iter1->releatedTerm->word,iter2->releatedTerm->word) == 0){
+                //printf("\n1:%s \n -4:%s",iter1->releatedTerm->word,iter2->releatedTerm->word);
                 return 1;
+            }
+
             iter2 = iter2->next;
         }
+        iter2 = term2->firstOrderReleations;
         iter1 = iter1->next;
     }
     return 0;
@@ -370,10 +490,89 @@ void addToSecondOrderList(Term *term1, Term *term2) {
     }
 }
 
-
-
 void createThirdOrderReleations(Term* root){
+    Term *iter=root;
+    Term * iter2=root;
 
+
+    while(iter !=NULL){
+        while(iter2!=NULL) {
+            if( HasTwoTermSecondORderRelations(iter,iter2)){
+                iter2 = iter2->next;
+                continue;
+            }
+            if(HasTwoTermFirstORderRelations(iter,iter2) ){
+                iter2 = iter2->next;
+                continue;
+            }
+
+            if((strcmp(iter->word,"1")== 0))
+                if((strcmp(iter2->word,"5")== 0))
+                    printf("sss");
+            if(checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(iter,iter2)){
+                addToThirdOrderList(iter,iter2);
+            }
+            iter2 = iter2->next;
+        }
+        iter2=root;
+        iter=iter->next;
+
+    }
+}
+
+bool HasTwoTermSecondORderRelations(Term *term1, Term *term2) {
+    RL *iter = term1->secondOrderReleations;
+    while(iter != NULL){
+        if(strcmp(iter->releatedTerm->word,term2->word) == 0)
+            return 1;
+        iter = iter->next;
+    }
+    return 0;
+}
+
+bool HasTwoTermFirstORderRelations(Term *term1, Term *term2) {
+    RL *iter = term1->firstOrderReleations;
+    while(iter != NULL){
+        if(strcmp(iter->releatedTerm->word,term2->word) == 0)
+            return 1;
+        iter = iter->next;
+    }
+    return 0;
+}
+
+void addToThirdOrderList(Term *term1, Term *term2) {
+    RL *iter;
+    if(term1->thirdOrderReleations == NULL){
+        term1->thirdOrderReleations = malloc(sizeof(RL));
+        term1->thirdOrderReleations->releatedTerm=term2;
+        term1->thirdOrderReleations->next=NULL;
+    }else{
+        iter = term1->thirdOrderReleations;
+
+        while(iter->next != NULL)
+            iter = iter->next;
+
+        iter->next = malloc(sizeof(RL));
+        iter->next->releatedTerm=term2;
+        iter->next->next=NULL;
+    }
+}
+
+bool checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(Term *term1, Term *term2) {
+    RL *iter1=term1->secondOrderReleations,*iter2=term2->firstOrderReleations;
+    while(iter1 != NULL){
+        while(iter2 != NULL){
+            //if(strcmp(iter1->releatedTerm->word,"2")==0 && strcmp(iter2->releatedTerm->word,"2")==0)
+
+            if(strcmp(iter1->releatedTerm->word,iter2->releatedTerm->word) == 0)
+                return 1;
+            iter2 = iter2->next;
+        }
+        iter2 = term2->firstOrderReleations;
+        iter1 = iter1->next;
+
+    }
+    return 0;
 }
 
 bool checkIfHaveCommonDocument(Term *term1, Term *term2) {//In this method checking two rods documents lists,there is 3 possibilities
@@ -386,42 +585,32 @@ bool checkIfHaveCommonDocument(Term *term1, Term *term2) {//In this method check
         if (term2Doc->next == NULL) {
             return strcmp(term1Doc->name, term2Doc->name) == 0 ? 1 : 0;//Here both have only 1 document
         } else {//here term1 has 1 document term2 has more than 1 document
-            while (term2Doc->next != NULL) {
+            while (term2Doc != NULL) {
                 if (strcmp(term1Doc->name, term2Doc->name) == 0)
                     return 1;
                 term2Doc = term2Doc->next;
             }
-            if (strcmp(term1Doc->name, term2Doc->name) == 0)
-                return 1;
-            else
                 return 0;
         }
     } else {
         if (term2Doc->next == NULL) {//here term1 has more than 1 document term 2 has 1 document
-            while (term1Doc->next != NULL) {
+            while (term1Doc != NULL) {
                 if (strcmp(term1Doc->name, term2Doc->name) == 0)
                     return 1;
                 term1Doc = term1Doc->next;
             }
-            if (strcmp(term1Doc->name, term2Doc->name) == 0)
-                return 1;
-            else
-                return 0;
+            return 0;
         } else {//here term1 and term2 have more than 1 document
-            while (term1Doc->next != NULL) {
-                while (term2Doc->next != NULL) {
+            while (term1Doc != NULL) {
+                while (term2Doc != NULL) {
                     if (strcmp(term1Doc->name, term2Doc->name) == 0)
                         return 1;
                     term2Doc = term2Doc->next;
                 }
-                if (strcmp(term1Doc->name, term2Doc->name) == 0)
-                    return 1;
+                term2Doc = term2->documents;
                 term1Doc = term1Doc->next;
             }
-            if (strcmp(term1Doc->name, term2Doc->name) == 0)
-                return 1;
-            else
-                return 0;
+            return 0;
         }
 
     }
