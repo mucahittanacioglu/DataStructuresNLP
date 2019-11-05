@@ -4,3 +4,4 @@ project(DataSturcturesP1 C)
 set(CMAKE_C_STANDARD 11)
 
 add_executable(DataSturcturesP1 main.c)
+

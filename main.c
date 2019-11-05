@@ -4,10 +4,12 @@
 #include <dirent.h>
 #include<locale.h>
 #include <stdbool.h>
+#include <math.h>
 
-typedef struct releationList RL;
-typedef struct term Term;
+typedef struct relationList RL;
+typedef struct term Term;           //struct's type def
 typedef struct Document Doc;
+typedef struct MostFrequentWords MFW;
 
 struct term{
     char word[20];
@@ -16,7 +18,7 @@ struct term{
     Term *next;
 };
 
-struct releationList{
+struct relationList{
     Term *releatedTerm;
     RL *next;
 };
@@ -27,7 +29,16 @@ struct Document{
     Doc *next;
 };
 
+struct MostFrequentWords{
+    char category[40];
+    Term* word;
+    int count;
+    double idf;
+    MFW *next;
+};
+
 struct dirent *d1,*d2;  // Pointer for directory entry
+//function's prototype
 void printList(Term*);
 void addToMasterLinkedList(char*,Term**,char*);
 void startReading(Term**,char*);
@@ -38,42 +49,45 @@ void createRelations(Term*);
 void createFirstOrderReleations(Term*);
 void createSecondOrderReleations(Term*);
 void createThirdOrderReleations(Term*);
-
 bool checkIfHaveCommonDocument(Term*,Term*);
-
 void addToFirstOrderList(Term*, Term*);
-
 void printFirstOrderRl(Term *pTerm);
-
 bool checkIfHaveCommonTermInFirstOrderList(Term *pTerm, Term *pTerm1);
-
 void addToSecondOrderList(Term *pTerm, Term *pTerm1);
-
 bool checkIsTwoHasFirstOrderReleationsEachOther(Term *term1, Term *term2);
-
 void printSecondOrderRl(Term *pTerm);
-
 bool checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(Term *pTerm, Term *pTerm1);
-
 void addToThirdOrderList(Term *pTerm, Term *pTerm1);
-
 void printThirdOrderRl(Term *pTerm);
-
 bool HasTwoTermFirstORderRelations(Term *pTerm, Term *pTerm1);
-
 bool HasTwoTermSecondORderRelations(Term *pTerm, Term *pTerm1);
-
 void printFirstORderOfGivenTerm(Term *pTerm, char* );
-
 void printSecondORderOfGivenTerm(Term *pTerm, char* );
-
 void printThirdORderOfGivenTerm(Term *root, char *term);
-
 void printGivenTermsDetails(Term *root, char *term);
+void printFirstOrderTermOcurrence(Term *pTerm);
+void printSecondOrderTermOcurrence(Term *pTerm);
+void printThirdOrderTermOcurrence(Term *pTerm);
+void printMostFrequentWords(MFW*,MFW*,MFW*);
+void printMostFrequentWordsByCategory(MFW*);
+void createMostFrequentWordsList(Term *root,MFW**,MFW**,MFW**);
+void creteMFWListFor(Term *root,MFW**, char *category,int,int);
+void addToMFWList(MFW **mfwRoot, char *category, Term *term,int,Term*);
+bool isInMfwList(MFW *root, char *word);
+int getNumOfDocuments(Term *term, Term *root);
+void printMostFrequentWordsWithIdf(MFW *pWords, MFW *pWords1, MFW *pWords2);
+void printMostFrequentWordsByCategoryWithIdf(MFW *pWords);
+int magazinDocNum=0,healthDocNum=0,econDocNum=0;
+
 
 int main() {
-    Term *root=NULL;
     setlocale(LC_ALL, "Turkish");
+    Term *root=NULL;
+    MFW *mfwRootHealth=NULL;
+    MFW *mfwRootMag=NULL;
+    MFW *mfwRootEcon=NULL;
+
+
     char path[20]={"dataset/"};
     // opendir() returns a pointer of DIR type.
     DIR *datasets = opendir("dataset");
@@ -95,11 +109,22 @@ int main() {
 
         folders = opendir(strcat(path,d1->d_name));//opening directorys with order inside dataset folder
 
+
+
         while ((d2 = readdir(folders)) != NULL){
             if (!strcmp (d2->d_name, "."))
                 continue;                   //checking for undesired input
             if (!strcmp (d2->d_name, ".."))
                 continue;
+
+            if(strcmp(d1->d_name,"econ")==0)
+                econDocNum++;
+
+            if(strcmp(d1->d_name,"magazin")==0)
+                magazinDocNum++;
+
+            if(strcmp(d1->d_name,"health")==0)
+                healthDocNum++;
 
             strcat(path,"/");
             strcat(path,d2->d_name);//setting input path
@@ -119,10 +144,18 @@ int main() {
 
     closedir(datasets);
     createRelations(root);
-    printGivenTermsDetails(root,"ve");
-    //printFirstORderOfGivenTerm(root,"5");
-    //printSecondORderOfGivenTerm(root,"1");
-   // printThirdORderOfGivenTerm(root,"1");
+
+    //createMostFrequentWordsList(root,&mfwRootMag,&mfwRootHealth,&mfwRootEcon);
+
+   // printMostFrequentWords(mfwRootEcon,mfwRootHealth,mfwRootMag);
+   //printMostFrequentWordsWithIdf(mfwRootEcon,mfwRootHealth,mfwRootMag);
+    //printFirstOrderTermOcurrence(root);
+   // printSecondOrderTermOcurrence(root);
+   // printThirdOrderTermOcurrence(root);
+   // printGivenTermsDetails(root,"ve");
+    //printFirstORderOfGivenTerm(root,"ve");
+    //printSecondORderOfGivenTerm(root,"livaneli");
+   // printThirdORderOfGivenTerm(root,"hak");
     //printList(root);
    //printListWithDeteails(root);
    //printFirstOrderRl(root);
@@ -131,7 +164,194 @@ int main() {
     return 0;
 }
 
-void printGivenTermsDetails(Term *root, char *term) {
+void printMostFrequentWordsWithIdf(MFW *rootEcon,MFW *rootHealth, MFW *rootMag) {
+    printMostFrequentWordsByCategoryWithIdf(rootMag);
+    printMostFrequentWordsByCategoryWithIdf(rootEcon);
+    printMostFrequentWordsByCategoryWithIdf(rootHealth);
+}
+
+void printMostFrequentWordsByCategoryWithIdf(MFW *root) {
+    printf("\t--------------------%s-------------------------\n\n",root->category);
+    while(root != NULL){
+        printf("\t|%s:%f\n",root->word->word,root->idf);
+        root = root->next;
+    }
+    printf("\t_________________\n");
+}
+
+void printMostFrequentWords(MFW *rootEcon,MFW *rootHealth, MFW *rootMag) {
+    printMostFrequentWordsByCategory(rootMag);
+    printMostFrequentWordsByCategory(rootEcon);
+    printMostFrequentWordsByCategory(rootHealth);
+
+}
+
+void printMostFrequentWordsByCategory(MFW *root) {
+
+    printf("\t--------------------%s-------------------------\n\n",root->category);
+    while(root != NULL){
+        printf("\t|%s:%d\n",root->word->word,root->count);
+        root = root->next;
+    }
+    printf("\t_________________\n");
+}
+
+void createMostFrequentWordsList(Term *root,MFW **mfwRootMag,MFW **mfwRootHealth,MFW **mfwRootEcon) {
+    creteMFWListFor(root,mfwRootEcon,"econ",0,10);
+    creteMFWListFor(root,mfwRootHealth,"health",0,10);
+    creteMFWListFor(root,mfwRootMag,"magazin",0,10);
+}
+
+void creteMFWListFor(Term *root,MFW **mfwRoot, char *category,int maxCount,int forTenTerm) {
+
+    int max=maxCount,tempMax=0;
+
+    Doc *iterDoc;
+    Term *iterTerm=root,*termToAdd=NULL;
+
+    while(iterTerm != NULL){
+        iterDoc = iterTerm->documents;
+        while(iterDoc != NULL){
+            if(strstr(iterDoc->name,category) != NULL){
+                if(!isInMfwList(*mfwRoot,iterTerm->word) && (forTenTerm==10 ? (max < iterDoc->count):(tempMax <= iterDoc->count))){//cehecking MLL to find mos frequwntly used words ,tempMa variable to avoid store all ten terms  in array orsometihg
+                    max = iterDoc->count;
+                    tempMax=iterDoc->count;
+                    termToAdd = iterTerm;
+                }
+
+            }
+            iterDoc = iterDoc->next;
+        }
+        iterTerm = iterTerm->next;
+    }
+    if(termToAdd != NULL)
+        addToMFWList(mfwRoot,category,termToAdd,(forTenTerm==10 ? max:tempMax),root);
+    if(forTenTerm==1)//checking for 10 term have added
+        return;
+    creteMFWListFor(root,mfwRoot,category,max,--forTenTerm);//re calling itself
+}
+
+bool isInMfwList(MFW *root, char *word) {//simple function that checking is term already mfw list
+    while(root != NULL){
+        if(strcmp(root->word->word,word) == 0)
+            return 1;
+        root = root->next;
+    }
+    return 0;
+}
+
+void addToMFWList(MFW **mfwRoot, char *category, Term *term,int count,Term* root) {
+    MFW *iter = (*mfwRoot);
+    int documentNum=1;
+
+    if(strcmp(category,"magazin")==0)
+        documentNum=magazinDocNum;
+
+    if(strcmp(category,"econ")==0)  //document num sets for idf
+        documentNum=econDocNum;
+
+    if(strcmp(category,"health")==0)
+        documentNum=healthDocNum;
+
+   double tempIdf = log(documentNum / getNumOfDocuments(term, root));//creating temp idf
+
+    if((*mfwRoot) == NULL){ //checking for list is empty
+        (*mfwRoot) = (MFW*)malloc(sizeof(MFW));
+        strcpy((*mfwRoot)->category,category);
+        (*mfwRoot)->word=term;
+        (*mfwRoot)->count=count;
+        (*mfwRoot)->idf=tempIdf;
+        (*mfwRoot)->next = NULL;
+    }else{
+        while(iter->next != NULL)//adding new node to end of list
+            iter = iter->next;
+        iter->next = (MFW*)malloc(sizeof(MFW));
+        strcpy(iter->next->category,category);
+        iter->next->word = term;
+        iter->next->count = count;
+        iter->idf = tempIdf;
+        iter->next->next = NULL;
+    }
+
+}
+
+int getNumOfDocuments(Term *term, Term *root) {//simple function that returns given terms number of document it occured
+    Doc *iter = root->documents;
+    int counter = 0;
+    while(iter != NULL){
+        counter++;
+        iter = iter->next;
+    }
+    return counter;
+}
+
+void printThirdOrderTermOcurrence(Term *root) {//this function prints all terms with third order
+    RL* iter;
+    printf("3rd -order term co-occurrence:\n");
+    while(root->next!= NULL){
+        if(root->thirdOrderReleations==NULL){
+            root = root->next;
+            continue;
+        }
+        iter=root->thirdOrderReleations;
+
+        while(iter !=NULL){
+            printf("{%s, %s}, ",root->word,iter->releatedTerm->word);
+            iter = iter->next;
+        }
+
+        root = root->next;
+        printf("\n");
+
+    }
+    printf("\n");
+}
+
+void printSecondOrderTermOcurrence(Term *root) {//this function prints all term with second order
+    RL* iter;
+    printf("2nd -order term co-occurrence:\n");
+    while(root->next!= NULL){
+        if(root->secondOrderReleations==NULL){
+            root = root->next;
+            continue;
+        }
+        iter=root->secondOrderReleations;
+
+        while(iter !=NULL){
+            printf("{%s, %s}, ",root->word,iter->releatedTerm->word);
+            iter = iter->next;
+        }
+
+        root = root->next;
+        printf("\n");
+    }
+
+    printf("\n");
+}
+
+void printFirstOrderTermOcurrence(Term *root) {//this function prints all terms with first order
+    RL* iter;
+    printf("1st -order term co-occurrence:\n");
+    while(root->next!= NULL){
+        if(root->firstOrderReleations==NULL){
+            root = root->next;
+            continue;
+        }
+        iter=root->firstOrderReleations;
+
+        while(iter !=NULL){
+            printf("{%s, %s}, ",root->word,iter->releatedTerm->word);
+            iter = iter->next;
+        }
+
+        root = root->next;
+        printf("\n");
+    }
+
+    printf("\n");
+}
+
+void printGivenTermsDetails(Term *root, char *term) {//this function prints all the details of given term
     Doc *iter;
     while(root != NULL){
 
@@ -153,7 +373,7 @@ void printGivenTermsDetails(Term *root, char *term) {
     }
 }
 
-void printThirdORderOfGivenTerm(Term *root, char *term) {
+void printThirdORderOfGivenTerm(Term *root, char *term) {//this function prints given terms third order list
     RL* iter;
     while(root != NULL){
         if(strcmp(root->word,term)==0){
@@ -168,7 +388,7 @@ void printThirdORderOfGivenTerm(Term *root, char *term) {
     }
 }
 
-void printSecondORderOfGivenTerm(Term *root, char* term) {
+void printSecondORderOfGivenTerm(Term *root, char* term) {//this function prints given terms second order list
     RL* iter;
     while(root != NULL){
         if(strcmp(root->word,term)==0){
@@ -183,7 +403,7 @@ void printSecondORderOfGivenTerm(Term *root, char* term) {
     }
 }
 
-void printFirstORderOfGivenTerm(Term *root, char *term) {
+void printFirstORderOfGivenTerm(Term *root, char *term) {//this function prints given terms first order list
    RL* iter;
     while(root != NULL){
         if(strcmp(root->word,term)==0){
@@ -200,7 +420,7 @@ void printFirstORderOfGivenTerm(Term *root, char *term) {
 
 }
 
-void printThirdOrderRl(Term *root) {
+void printThirdOrderRl(Term *root) {//this function prints all term's third order list
     RL* iter;
     while(root != NULL){
 
@@ -220,7 +440,7 @@ void printThirdOrderRl(Term *root) {
     }
 }
 
-void printSecondOrderRl(Term *root) {
+void printSecondOrderRl(Term *root) {//this function prints all term's second order list
     RL* iter;
     while(root != NULL){
         if(root->secondOrderReleations==NULL){
@@ -240,9 +460,9 @@ void printSecondOrderRl(Term *root) {
     }
 }
 
-void printFirstOrderRl(Term *root) {
+void printFirstOrderRl(Term *root) {//this function prints all term's first order list
     RL* iter;
-    while(root->next!= NULL){
+    while(root != NULL){
         if(root->firstOrderReleations==NULL){
             root = root->next;
             continue;
@@ -251,17 +471,17 @@ void printFirstOrderRl(Term *root) {
         printf("\nWORD: %s\nFirst Order List: ",root->word);
 
         iter=root->firstOrderReleations;
-        while(iter->next!=NULL){
-            printf("%s:",iter->releatedTerm->word);
+        while(iter != NULL){
+            printf("%s--",iter->releatedTerm->word);
             iter = iter->next;
         }
-        printf("%s:",iter->releatedTerm->word);
+
         root = root->next;
     }
 
 }
 
-void printList(Term* root){
+void printList(Term* root){//this function prints all terms in MLL
     int c = 1;
     printf("%s\n",root->word);
     while(root->next!=NULL){
@@ -270,16 +490,12 @@ void printList(Term* root){
     }
 }
 
-void printListWithDeteails(Term* root){
+void printListWithDeteails(Term* root){//This function prints all the words in MLL with their document info
     Doc *iter;
     while(root != NULL){
         iter=root->documents;
 
         printf("WORD: %s\n",root->word);
-       /* if(iter->next == NULL){
-            root=root->next;
-            continue;
-        }*/
 
         while(iter != NULL){
             printf("Document Name: %s|\tCount: %d\n", iter->name, iter->count);
@@ -291,7 +507,8 @@ void printListWithDeteails(Term* root){
 
     }
 }
-void startReading(Term** root,char *path){
+
+void startReading(Term** root,char *path){ //this function begins reading files
     FILE *fp;
     char buffer[255];
     int c =1;
@@ -303,7 +520,8 @@ void startReading(Term** root,char *path){
 }
 
 void addToMasterLinkedList(char* name,Term** root,char* docname) {    //MLL= Master Linked List
-
+    if(strcmp(name,"") == 0)
+        return;
     Doc* tempDocument= (Doc *)malloc(sizeof(Doc));
     strcpy(tempDocument->name,docname);//Creating temp document.
     tempDocument->count=1;
@@ -366,6 +584,7 @@ int checkIsAlreadyInList(char* name,Term* root){
     }
     return 0;
 }
+
 void createRelations(Term *root){
    createFirstOrderReleations(root);
    createSecondOrderReleations(root);
@@ -392,7 +611,7 @@ void createFirstOrderReleations(Term* root){//While creating first order list th
 
 void addToFirstOrderList(Term *term1, Term *term2) {
     RL *iter;
-    if(term1->firstOrderReleations == NULL){
+    if(term1->firstOrderReleations == NULL){//creating linked list
         term1->firstOrderReleations = malloc(sizeof(RL));
         term1->firstOrderReleations->releatedTerm=term2;
         term1->firstOrderReleations->next=NULL;
@@ -440,15 +659,12 @@ void createSecondOrderReleations(Term* root){//While creating second order list 
 
 bool checkIsTwoHasFirstOrderReleationsEachOther(Term *term1, Term *term2) {
     RL* iter=term1->firstOrderReleations;
-    while(iter->next != NULL){
+    while(iter != NULL){
         if(strcmp(iter->releatedTerm->word,term2->word) == 0)
             return 1;
         iter = iter->next;
     }
-    if(strcmp(iter->releatedTerm->word,term2->word) == 0)
-        return 1;
-    else
-        return 0;
+    return 0;
 }
 
 bool checkIfHaveCommonTermInFirstOrderList(Term *term1, Term *term2) {
@@ -472,7 +688,7 @@ bool checkIfHaveCommonTermInFirstOrderList(Term *term1, Term *term2) {
     return 0;
 }
 
-void addToSecondOrderList(Term *term1, Term *term2) {
+void addToSecondOrderList(Term *term1, Term *term2) {//simple linked list addition function
     RL *iter;
     if(term1->secondOrderReleations == NULL){
         term1->secondOrderReleations = malloc(sizeof(RL));
@@ -490,26 +706,24 @@ void addToSecondOrderList(Term *term1, Term *term2) {
     }
 }
 
-void createThirdOrderReleations(Term* root){
+void createThirdOrderReleations(Term* root){//while creating third order relation if second term's first order list and first term's first order list have common term and vice versa
+                                            // and if this two terms are dont have second or first order relation then they have third order relation
     Term *iter=root;
     Term * iter2=root;
 
 
     while(iter !=NULL){
         while(iter2!=NULL) {
-            if( HasTwoTermSecondORderRelations(iter,iter2)){
+            if( HasTwoTermSecondORderRelations(iter,iter2)){//checking id they have second order relation
                 iter2 = iter2->next;
                 continue;
             }
-            if(HasTwoTermFirstORderRelations(iter,iter2) ){
+            if(HasTwoTermFirstORderRelations(iter,iter2) ){//checking id they have second order relation
                 iter2 = iter2->next;
                 continue;
             }
 
-            if((strcmp(iter->word,"1")== 0))
-                if((strcmp(iter2->word,"5")== 0))
-                    printf("sss");
-            if(checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(iter,iter2)){
+            if(checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(iter,iter2)){//checking if they common word
                 addToThirdOrderList(iter,iter2);
             }
             iter2 = iter2->next;
@@ -520,7 +734,7 @@ void createThirdOrderReleations(Term* root){
     }
 }
 
-bool HasTwoTermSecondORderRelations(Term *term1, Term *term2) {
+bool HasTwoTermSecondORderRelations(Term *term1, Term *term2) {//simple function that checks whether given 2 term has second order relation
     RL *iter = term1->secondOrderReleations;
     while(iter != NULL){
         if(strcmp(iter->releatedTerm->word,term2->word) == 0)
@@ -530,7 +744,7 @@ bool HasTwoTermSecondORderRelations(Term *term1, Term *term2) {
     return 0;
 }
 
-bool HasTwoTermFirstORderRelations(Term *term1, Term *term2) {
+bool HasTwoTermFirstORderRelations(Term *term1, Term *term2) {//simple function that checks whether given 2 term has first order relation
     RL *iter = term1->firstOrderReleations;
     while(iter != NULL){
         if(strcmp(iter->releatedTerm->word,term2->word) == 0)
@@ -540,7 +754,7 @@ bool HasTwoTermFirstORderRelations(Term *term1, Term *term2) {
     return 0;
 }
 
-void addToThirdOrderList(Term *term1, Term *term2) {
+void addToThirdOrderList(Term *term1, Term *term2) {//linked list addition for third order
     RL *iter;
     if(term1->thirdOrderReleations == NULL){
         term1->thirdOrderReleations = malloc(sizeof(RL));
@@ -558,12 +772,11 @@ void addToThirdOrderList(Term *term1, Term *term2) {
     }
 }
 
-bool checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(Term *term1, Term *term2) {
+bool checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(Term *term1, Term *term2) {//checking if term1's second order list and term2's first order list have common term
     RL *iter1=term1->secondOrderReleations,*iter2=term2->firstOrderReleations;
+
     while(iter1 != NULL){
         while(iter2 != NULL){
-            //if(strcmp(iter1->releatedTerm->word,"2")==0 && strcmp(iter2->releatedTerm->word,"2")==0)
-
             if(strcmp(iter1->releatedTerm->word,iter2->releatedTerm->word) == 0)
                 return 1;
             iter2 = iter2->next;
@@ -575,7 +788,7 @@ bool checkIfHaveCommonTermInFirstTermsSecondOrderAndSecondTermsFirstORderList(Te
     return 0;
 }
 
-bool checkIfHaveCommonDocument(Term *term1, Term *term2) {//In this method checking two rods documents lists,there is 3 possibilities
+bool checkIfHaveCommonDocument(Term *term1, Term *term2) {//In this method checking two words documents lists,there is 3 possibilities
     // they both have only 1 document, one of them has 1 document other one more than one document , both of them has more than 1 document
 
     Doc *term1Doc = term1->documents, *term2Doc = term2->documents;
@@ -615,4 +828,3 @@ bool checkIfHaveCommonDocument(Term *term1, Term *term2) {//In this method check
 
     }
 }
-
