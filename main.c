@@ -33,7 +33,7 @@ struct MostFrequentWords{
     char category[40];
     Term* word;
     int count;
-    double idf;
+    double idfTimesTf;
     MFW *next;
 };
 
@@ -77,7 +77,7 @@ bool isInMfwList(MFW *root, char *word);
 int getNumOfDocuments(Term *term, Term *root);
 void printMostFrequentWordsWithIdf(MFW *pWords, MFW *pWords1, MFW *pWords2);
 void printMostFrequentWordsByCategoryWithIdf(MFW *pWords);
-int magazinDocNum=0,healthDocNum=0,econDocNum=0;
+int DocNum=0;
 
 
 int main() {
@@ -86,7 +86,6 @@ int main() {
     MFW *mfwRootHealth=NULL;
     MFW *mfwRootMag=NULL;
     MFW *mfwRootEcon=NULL;
-
 
     char path[20]={"dataset/"};
     // opendir() returns a pointer of DIR type.
@@ -109,23 +108,12 @@ int main() {
 
         folders = opendir(strcat(path,d1->d_name));//opening directorys with order inside dataset folder
 
-
-
         while ((d2 = readdir(folders)) != NULL){
             if (!strcmp (d2->d_name, "."))
                 continue;                   //checking for undesired input
             if (!strcmp (d2->d_name, ".."))
                 continue;
-
-            if(strcmp(d1->d_name,"econ")==0)
-                econDocNum++;
-
-            if(strcmp(d1->d_name,"magazin")==0)
-                magazinDocNum++;
-
-            if(strcmp(d1->d_name,"health")==0)
-                healthDocNum++;
-
+            DocNum++;
             strcat(path,"/");
             strcat(path,d2->d_name);//setting input path
 
@@ -145,13 +133,13 @@ int main() {
     closedir(datasets);
     createRelations(root);
 
-    //createMostFrequentWordsList(root,&mfwRootMag,&mfwRootHealth,&mfwRootEcon);
+     createMostFrequentWordsList(root,&mfwRootMag,&mfwRootHealth,&mfwRootEcon);
 
-   // printMostFrequentWords(mfwRootEcon,mfwRootHealth,mfwRootMag);
-   //printMostFrequentWordsWithIdf(mfwRootEcon,mfwRootHealth,mfwRootMag);
-    //printFirstOrderTermOcurrence(root);
-   // printSecondOrderTermOcurrence(root);
-   // printThirdOrderTermOcurrence(root);
+     printMostFrequentWords(mfwRootEcon,mfwRootHealth,mfwRootMag);
+     printMostFrequentWordsWithIdf(mfwRootEcon,mfwRootHealth,mfwRootMag);
+     //printFirstOrderTermOcurrence(root);
+     //printSecondOrderTermOcurrence(root);
+     //printThirdOrderTermOcurrence(root);
    // printGivenTermsDetails(root,"ve");
     //printFirstORderOfGivenTerm(root,"ve");
     //printSecondORderOfGivenTerm(root,"livaneli");
@@ -173,7 +161,7 @@ void printMostFrequentWordsWithIdf(MFW *rootEcon,MFW *rootHealth, MFW *rootMag) 
 void printMostFrequentWordsByCategoryWithIdf(MFW *root) {
     printf("\t--------------------%s-------------------------\n\n",root->category);
     while(root != NULL){
-        printf("\t|%s:%f\n",root->word->word,root->idf);
+        printf("\t|%s:%f\n",root->word->word,root->idfTimesTf);
         root = root->next;
     }
     printf("\t_________________\n");
@@ -204,31 +192,39 @@ void createMostFrequentWordsList(Term *root,MFW **mfwRootMag,MFW **mfwRootHealth
 
 void creteMFWListFor(Term *root,MFW **mfwRoot, char *category,int maxCount,int forTenTerm) {
 
-    int max=maxCount,tempMax=0;
+    int max=maxCount;
 
     Doc *iterDoc;
     Term *iterTerm=root,*termToAdd=NULL;
-
+    int count=0;
     while(iterTerm != NULL){
+        if(isInMfwList(*mfwRoot,iterTerm->word)){
+            iterTerm = iterTerm->next;
+            continue;
+        }
         iterDoc = iterTerm->documents;
         while(iterDoc != NULL){
             if(strstr(iterDoc->name,category) != NULL){
-                if(!isInMfwList(*mfwRoot,iterTerm->word) && (forTenTerm==10 ? (max < iterDoc->count):(tempMax <= iterDoc->count))){//cehecking MLL to find mos frequwntly used words ,tempMa variable to avoid store all ten terms  in array orsometihg
-                    max = iterDoc->count;
-                    tempMax=iterDoc->count;
-                    termToAdd = iterTerm;
-                }
+
+                    count = count + iterDoc->count;
+
+
 
             }
             iterDoc = iterDoc->next;
         }
+        if(max <= count){
+            max = count;
+            termToAdd = iterTerm;
+        }
         iterTerm = iterTerm->next;
+        count =0;
     }
     if(termToAdd != NULL)
-        addToMFWList(mfwRoot,category,termToAdd,(forTenTerm==10 ? max:tempMax),root);
+        addToMFWList(mfwRoot,category,termToAdd,max,root);
     if(forTenTerm==1)//checking for 10 term have added
         return;
-    creteMFWListFor(root,mfwRoot,category,max,--forTenTerm);//re calling itself
+    creteMFWListFor(root,mfwRoot,category,0,--forTenTerm);//re calling itself
 }
 
 bool isInMfwList(MFW *root, char *word) {//simple function that checking is term already mfw list
@@ -242,25 +238,17 @@ bool isInMfwList(MFW *root, char *word) {//simple function that checking is term
 
 void addToMFWList(MFW **mfwRoot, char *category, Term *term,int count,Term* root) {
     MFW *iter = (*mfwRoot);
-    int documentNum=1;
 
-    if(strcmp(category,"magazin")==0)
-        documentNum=magazinDocNum;
 
-    if(strcmp(category,"econ")==0)  //document num sets for idf
-        documentNum=econDocNum;
 
-    if(strcmp(category,"health")==0)
-        documentNum=healthDocNum;
-
-   double tempIdf = log(documentNum / getNumOfDocuments(term, root));//creating temp idf
+   double tempIdf = log(DocNum / getNumOfDocuments(term, root));//creating temp idf
 
     if((*mfwRoot) == NULL){ //checking for list is empty
         (*mfwRoot) = (MFW*)malloc(sizeof(MFW));
         strcpy((*mfwRoot)->category,category);
         (*mfwRoot)->word=term;
         (*mfwRoot)->count=count;
-        (*mfwRoot)->idf=tempIdf;
+        (*mfwRoot)->idfTimesTf=count*tempIdf;
         (*mfwRoot)->next = NULL;
     }else{
         while(iter->next != NULL)//adding new node to end of list
@@ -269,7 +257,7 @@ void addToMFWList(MFW **mfwRoot, char *category, Term *term,int count,Term* root
         strcpy(iter->next->category,category);
         iter->next->word = term;
         iter->next->count = count;
-        iter->idf = tempIdf;
+        iter->idfTimesTf = count*tempIdf;
         iter->next->next = NULL;
     }
 
@@ -792,39 +780,15 @@ bool checkIfHaveCommonDocument(Term *term1, Term *term2) {//In this method check
     // they both have only 1 document, one of them has 1 document other one more than one document , both of them has more than 1 document
 
     Doc *term1Doc = term1->documents, *term2Doc = term2->documents;
-    if(strcmp(term1->word,term2->word)==0)
-        return 0;
-    if (term1Doc->next == NULL) {
-        if (term2Doc->next == NULL) {
-            return strcmp(term1Doc->name, term2Doc->name) == 0 ? 1 : 0;//Here both have only 1 document
-        } else {//here term1 has 1 document term2 has more than 1 document
-            while (term2Doc != NULL) {
-                if (strcmp(term1Doc->name, term2Doc->name) == 0)
-                    return 1;
-                term2Doc = term2Doc->next;
-            }
-                return 0;
-        }
-    } else {
-        if (term2Doc->next == NULL) {//here term1 has more than 1 document term 2 has 1 document
-            while (term1Doc != NULL) {
-                if (strcmp(term1Doc->name, term2Doc->name) == 0)
-                    return 1;
-                term1Doc = term1Doc->next;
-            }
-            return 0;
-        } else {//here term1 and term2 have more than 1 document
-            while (term1Doc != NULL) {
-                while (term2Doc != NULL) {
-                    if (strcmp(term1Doc->name, term2Doc->name) == 0)
-                        return 1;
-                    term2Doc = term2Doc->next;
-                }
-                term2Doc = term2->documents;
-                term1Doc = term1Doc->next;
-            }
-            return 0;
-        }
+    while(term1Doc != NULL){
+        while(term2Doc != NULL){
+            if(strcmp(term1Doc->name,term2Doc->name) == 0)
+                return 1;
+            term2Doc = term2Doc->next;
 
+        }
+        term1Doc = term1Doc->next;
     }
+    return 0;
+
 }
